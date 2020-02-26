@@ -1,0 +1,44 @@
+---
+- hosts: app_nodes
+  become: yes
+  vars:
+    TELEGRAF_URL: https://dl.influxdata.com/telegraf/releases/telegraf-1.13.2-1.x86_64.rpm
+  tasks:
+    - name: "install telegraf"
+      yum:
+        name: "{{ TELEGRAF_URL }}"
+        state: present
+    - name: "copy telegraf config"
+      template:
+        src: telegraf.conf
+        dest: /etc/telegraf/telegraf.conf
+    - service:
+       name: telegraf
+       state: restarted
+
+- hosts: stats_database
+  become: yes
+  vars:
+    INFLUX_URL: https://dl.influxdata.com/influxdb/releases/influxdb-1.7.9.x86_64.rpm
+    GRAFANA_URL: https://dl.grafana.com/oss/release/grafana-6.6.0-1.x86_64.rpm
+  tasks:
+    - name: "install influxdb"
+      yum:
+         name: "{{ INFLUX_URL }}"
+         state: present
+    - name: "install grafana"
+      yum:
+         name: "{{ GRAFANA_URL }}"
+         state: present
+    - name: "copy grafana config"
+      template:
+        src: grafana.ini
+        dest: /etc/grafana/grafana.ini
+    - name: "restart grafana"
+      service:
+        name: grafana-server
+        state: restarted
+    - name: "restart influxdb"
+      service:
+        name: influxdb
+        state: restarted

@@ -1,0 +1,10 @@
+---
+- hosts: proxy
+  become: yes
+  tasks:
+    - name: "install certbot"
+      yum:
+        name: [certbot, python2-certbot-nginx]
+        state: present
+    - name: "install certificate"
+      command: certbot -i nginx -d "kijo-domenka.pl" --nginx -m "kamil121313@gmail.com" --agree-tos --redirect

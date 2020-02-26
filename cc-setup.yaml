@@ -1,0 +1,62 @@
+---
+- hosts: proxy
+  become: yes
+  vars:
+    EPEL_URL: https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+    app_node_ips:
+      - <node private ip>
+      - <node private ip>
+  tasks:
+    - name: "install EPEL"
+      yum:
+        name: "{{ EPEL_URL }}"
+    - name: "install nginx"
+      yum:
+        name: nginx
+        state: present
+    - name: "copy cfg into place"
+      template:
+        src: templates/proxy.conf
+        dest: /etc/nginx/conf.d/proxy.conf
+    - service:
+        name: nginx
+        state: restarted
+
+- hosts: app_nodes
+  become: yes
+  vars:
+    REPO_URL: https://github.com/kamilczerwinski22/employee-app
+    PROJECT_STAGE: master
+    APP_USER: kox
+  tasks:
+    - name: install os dep
+      yum:
+        name: [java-1.8.0-openjdk, maven, git]
+    - name: clone repo
+      git:
+        repo: "{{REPO_URL}}"
+        dest: /tmp/employee-repo
+        version: "{{ PROJECT_STAGE }}"
+    - name: build it
+      command: mvn package
+      args:
+        chdir: /tmp/employee-repo
+    - file:
+        path: /opt/employee
+        state: directory
+    - name: move artifact to it dest
+      command: mv /tmp/employee-repo/target/employee-app-1.0.jar /opt/employee/employee-app.jar
+    - user:
+        name: "{{ APP_USER }}"
+
+    - name: "put service config into place"
+      template:
+        src: templates/employee.service
+        dest: /etc/systemd/system/employee.service
+
+    - name: restart my service
+      systemd:
+        name: employee
+        state: restarted
+        daemon_reload: yes
+        enabled: true
